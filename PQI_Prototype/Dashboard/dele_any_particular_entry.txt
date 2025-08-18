@@ -1,0 +1,15 @@
+import sqlite3
+
+DB_PATH = "C:/Users/hp/Desktop/TCS AI Hackathon/database.db"
+
+conn = sqlite3.connect(DB_PATH)
+cursor = conn.cursor()
+
+# Delete a specific submission by ID
+submission_id = 1  # replace with the ID you want to delete
+cursor.execute("DELETE FROM submissions WHERE id = ?", (submission_id,))
+
+conn.commit()
+print(f"Submission {submission_id} deleted successfully!")
+
+conn.close()

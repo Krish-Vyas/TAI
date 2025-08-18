@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Manager Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: Arial; margin: 20px; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+th { background-color: #007BFF; color: white; }
+</style>
+</head>
+<body>
+<h2>Manager Dashboard</h2>
+
+<h3>Submissions Table</h3>
+<table id="submissionsTable">
+<thead>
+<tr>
+<th>Team</th><th>Member</th><th>Story Points</th><th>Comments</th><th>Customer Feedback</th><th>Additional Info</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<h3>Team Sentiment</h3>
+<canvas id="sentimentChart"></canvas>
+
+<h3>Top Key Phrases</h3>
+<ul id="keyPhrasesList"></ul>
+
+<h3>AI Recommendations / Alerts</h3>
+<ul id="recommendationsList"></ul>
+
+<h3>Team-Level Insights</h3>
+<table id="teamInsightsTable">
+<thead>
+<tr>
+<th>Team</th>
+<th>Avg Story Points</th>
+<th>Avg Comments Star</th>
+<th>Avg Customer Star</th>
+<th>Members</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+
+<script>
+async function loadDashboard() {
+    const res = await fetch("http://127.0.0.1:5000/submissions");
+    const data = await res.json();
+
+    const tbody = document.querySelector("#submissionsTable tbody");
+    tbody.innerHTML = "";
+
+    // Initialize star counts
+    let starCounts = { "1":0, "2":0, "3":0, "4":0, "5":0 };
+    let allKeyPhrases = {};
+
+    for (const row of data) {
+        // Fill table
+        const tr = document.createElement("tr");
+        ["team_name","member_name","story_points","comments","customer_feedback","additional_info"].forEach(key=>{
+            const td = document.createElement("td");
+            td.textContent = row[key];
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+
+        // AI analysis
+        const payload = { comments: row.comments, customer_feedback: row.customer_feedback };
+        const aiRes = await fetch("http://127.0.0.1:5000/ai/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await aiRes.json();
+
+        // Map stars
+        starCounts[result.comments_star] += 1;
+        starCounts[result.customer_star] += 1;
+
+        // Count key phrases
+        result.key_phrases.forEach(k=>{
+            allKeyPhrases[k] = (allKeyPhrases[k] || 0) + 1;
+        });
+    }
+
+    // Star ratings chart
+    new Chart(document.getElementById("sentimentChart"), {
+        type: 'bar',
+        data: {
+            labels: ["1 Star", "2 Stars", "3 Stars", "4 Stars", "5 Stars"],
+            datasets: [{
+                label: 'Number of Ratings',
+                data: [starCounts["1"], starCounts["2"], starCounts["3"], starCounts["4"], starCounts["5"]],
+                backgroundColor: ['#dc3545','#fd7e14','#ffc107','#28a745','#007BFF']
+            }]
+        },
+        options: {
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // Top key phrases
+    const ul = document.getElementById("keyPhrasesList");
+    ul.innerHTML = "";
+    Object.entries(allKeyPhrases)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,10)
+        .forEach(([phrase,count])=>{
+            const li = document.createElement("li");
+            li.textContent = `${phrase} (${count})`;
+            ul.appendChild(li);
+        });
+
+    // Fetch recommendations
+    const recRes = await fetch("http://127.0.0.1:5000/ai/recommendations");
+    const recData = await recRes.json();
+    const recUl = document.getElementById("recommendationsList");
+    recUl.innerHTML = "";
+    recData.recommendations.forEach(r=>{
+      const li = document.createElement("li");
+      li.textContent = r;
+      recUl.appendChild(li);
+    });
+
+    // Fetch team insights
+    const teamRes = await fetch("http://127.0.0.1:5000/ai/team-insights");
+    const teamData = await teamRes.json();
+    const teamTbody = document.querySelector("#teamInsightsTable tbody");
+    teamTbody.innerHTML = "";
+
+    Object.entries(teamData).forEach(([team, vals]) => {
+      const tr = document.createElement("tr");
+      const tdTeam = document.createElement("td");
+      tdTeam.textContent = team;
+      tr.appendChild(tdTeam);
+
+      const tdStory = document.createElement("td");
+      tdStory.textContent = vals.avg_story_points;
+      tr.appendChild(tdStory);
+
+      const tdComments = document.createElement("td");
+      tdComments.textContent = vals.avg_comments_star;
+      tr.appendChild(tdComments);
+
+      const tdCustomer = document.createElement("td");
+      tdCustomer.textContent = vals.avg_customer_star;
+      tr.appendChild(tdCustomer);
+
+      const tdMembers = document.createElement("td");
+      tdMembers.textContent = vals.members.join(", ");
+      tr.appendChild(tdMembers);
+
+      teamTbody.appendChild(tr);
+    });
+
+
+}
+
+loadDashboard();
+
+</script>
+</body>
+</html>

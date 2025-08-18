@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hackathon Submission Form</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    form { max-width: 400px; padding: 20px; border: 1px solid #ccc; border-radius: 10px; }
+    input, textarea { width: 100%; margin: 8px 0; padding: 8px; }
+    button { padding: 10px 15px; background: #007BFF; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <h2>Hackathon Submission</h2>
+  <form id="submissionForm">
+    <input type="text" id="team_name" placeholder="Team Name" required>
+    <input type="text" id="member_name" placeholder="Member Name" required>
+    <input type="number" id="story_points" placeholder="Story Points" required>
+    <textarea id="comments" placeholder="Comments"></textarea>
+    <textarea id="customer_feedback" placeholder="Customer Feedback"></textarea>
+    <textarea id="additional_info" placeholder="Additional Info"></textarea>
+    <button type="submit">Submit</button>
+  </form>
+
+  <p id="response"></p>
+
+  <script>
+    document.getElementById("submissionForm").addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      const data = {
+        team_name: document.getElementById("team_name").value,
+        member_name: document.getElementById("member_name").value,
+        story_points: parseInt(document.getElementById("story_points").value),
+        comments: document.getElementById("comments").value,
+        customer_feedback: document.getElementById("customer_feedback").value,
+        additional_info: document.getElementById("additional_info").value
+      };
+
+      try {
+        const response = await fetch("http://127.0.0.1:5000/submissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        document.getElementById("response").innerText = result.message;
+      } catch (error) {
+        document.getElementById("response").innerText = "Error submitting data.";
+      }
+    });
+  </script>
+</body>
+</html>
